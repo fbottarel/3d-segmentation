@@ -44,5 +44,5 @@ Thumbs.db
 
 # Custom dirs #
 ######################
-*/*/build
-*/CmakeLists.txt.user
+**/build
+**/CMakeLists.txt.user
