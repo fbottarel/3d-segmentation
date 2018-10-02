@@ -1,0 +1,5 @@
+<connection>
+        <from>/depthCamera/depthImage:o</from>
+        <to>/viewer/depth</to>
+        <protocol>fast_tcp+recv.portmonitor+type.dll+file.depthimage</protocol>
+</connection
