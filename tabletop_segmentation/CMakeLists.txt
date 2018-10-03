@@ -7,6 +7,7 @@ project(tabletop_segmentation
 find_package(YARP REQUIRED 
                 COMPONENTS
                     OS
+                    dev
                     sig
                     math
                     pcl)
