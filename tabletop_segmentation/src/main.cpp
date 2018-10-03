@@ -132,7 +132,14 @@ private:
 
     //  PCL Visualizer
     pcl::visualization::PCLVisualizer visualizer;
+    int visualizer_x_size;
+    int visualizer_y_size;
     int total_pc_viewport = 0;
+
+    // Point cloud cutoff distance
+    double workspace_limit_x;
+    double workspace_limit_y;
+    double workspace_limit_z;
 
 /****************************************************/
 
@@ -152,6 +159,17 @@ public:
     {
 
         yInfo() << "Configuring module.";
+
+        //  Configure viewer size
+        yarp::os::Bottle bottle_viewer_params = rf.findGroup("VIEWER_SETTINGS");
+        visualizer_x_size = bottle_viewer_params.check("x_size", yarp::os::Value(800)).asInt();
+        visualizer_y_size = bottle_viewer_params.check("y_size", yarp::os::Value(600)).asInt();
+
+        //  Configure cutoff distance; default is no limit
+        yarp::os::Bottle bottle_workspace_limits = rf.findGroup("WORKSPACE_LIMITS");
+        workspace_limit_x = bottle_workspace_limits.check("x_limit", yarp::os::Value(-1.0)).asDouble();
+        workspace_limit_y = bottle_workspace_limits.check("y_limit", yarp::os::Value(-1.0)).asDouble();
+        workspace_limit_z = bottle_workspace_limits.check("z_limit", yarp::os::Value(-1.0)).asDouble();
 
         //  Configure and open rgbd sensor driver
         yarp::os::Property config;
@@ -225,7 +243,6 @@ public:
         visualizer.initCameraParameters();
         visualizer.setSize(800, 600);
         visualizer.setCameraPosition(0.0, 0.0, 0.0, 0.0, -1.0, 0.0, total_pc_viewport);
-
         visualizer.spinOnce(1);
 
         return true;
