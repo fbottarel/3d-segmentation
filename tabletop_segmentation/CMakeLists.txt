@@ -10,7 +10,10 @@ find_package(YARP REQUIRED
                     dev
                     sig
                     math
-                    pcl)
+                    pcl
+                    idl_tools
+)
+
 find_package(OpenCV REQUIRED)
 
 include_directories(${PCL_INCLUDE_DIRS}
@@ -22,8 +25,12 @@ link_directories(${PCL_LIBRARY_DIRS}
 add_definitions(${PCL_DEFINITIONS}
 )
 
+yarp_add_idl(IDL_GEN_FILES src/idl.thrift)
+
 add_executable(${CMAKE_PROJECT_NAME} 
                     src/main.cpp
+                    src/idl.thrift
+                    ${IDL_GEN_FILES}
 )
 
 target_link_libraries(${CMAKE_PROJECT_NAME}
