@@ -16,6 +16,7 @@
 
 #include <pcl/pcl_base.h>
 #include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/io/pcd_io.h>
 
 #include <yarp/os/RpcClient.h>
 #include <yarp/os/RpcServer.h>
@@ -25,11 +26,15 @@
 #include <yarp/os/Bottle.h>
 #include <yarp/os/Value.h>
 #include <yarp/os/ResourceFinder.h>
+#include <yarp/os/Mutex.h>
+#include <yarp/os/LockGuard.h>
 #include <yarp/sig/PointCloud.h>
 #include <yarp/sig/Image.h>
 #include <yarp/dev/IRGBDSensor.h>
 #include <yarp/dev/PolyDriver.h>
 #include <yarp/pcl/Pcl.h>
+
+#include <src/TableSegmentationServices.h>
 
 //  Define some custom types
 typedef yarp::sig::ImageOf <yarp::sig::PixelRgb> RGBImage_yarp;
@@ -99,10 +104,12 @@ public:
 
 };
 
-class TabletopSegmentationModule : public yarp::os::RFModule
+class TabletopSegmentationModule : public yarp::os::RFModule, public TableSegmentationServices
 {
 
 private:
+
+    yarp::os::Mutex mutex;
 
     std::string module_id;
 
@@ -111,6 +118,9 @@ private:
 
     //  Camera rpc port
     yarp::os::RpcClient camera_rpc_port;
+
+    //  Service rpc server
+    yarp::os::RpcServer rpc_service;
 
     //  Camera parameters
     std::unique_ptr <CameraIntrinsicParams> depth_cam_params;
@@ -123,8 +133,9 @@ private:
     yarp::os::BufferedPort <DepthImage_yarp> camera_in_depth_port;
 
     //  Depth and rgb images from the camera
-    RGBImage_yarp *img_rgb;
-    DepthImage_yarp *img_depth;
+    RGBImage_yarp img_rgb;
+    yarp::sig::FlexImage img_rgb_flex;
+    DepthImage_yarp img_depth;
 
     //  Reconstructed scene point cloud
     PointCloud_yarp scene_point_cloud;
@@ -146,12 +157,17 @@ private:
 public:
 
     TabletopSegmentationModule():
-        module_id("tabletopSegmentation"),
-        visualizer("Tabletop Segmentation"),
+        module_id("tabletopSegmentation"),        
         iRgbd(nullptr),
-        img_rgb(nullptr),
-        img_depth(nullptr)
+        visualizer("Tabletop Segmentation")
     {}
+
+    /****************************************************/
+
+    bool attach(yarp::os::RpcServer &source) override
+    {
+        return this->yarp().attachAsServer(source);
+    }
 
     /****************************************************/
 
@@ -227,11 +243,11 @@ public:
          //  Set up ports for reading data from the camera
         camera_rpc_port.open("/" + module_id + "/camera:rpc");
         camera_in_depth_port.open("/" + module_id + "/camera_depth:i");
-        camera_in_rgb_port.open("/" + module_id + "/camera_rgb:i");
+        camera_in_rgb_port.open("/" + module_id + "/camera_rgb:i"); 
 
-        //  Setting null pointers to the images
-        img_depth = nullptr;
-        img_rgb = nullptr;
+        //  Attach the rpc port to the rpcserver
+        rpc_service.open("/" + module_id + "/cmd:rpc");
+        attach(rpc_service);
 
         //  Prepare the point cloud
         scene_point_cloud.clear();
@@ -252,7 +268,7 @@ public:
 
     double getPeriod() override
     {
-        return 0.0;
+        return 0.1;
     }
 
     /****************************************************/
@@ -260,18 +276,45 @@ public:
     bool updateModule() override
     {
 
-        /*
-         *  Read the rgb image and depth map.
-         *  Wait for data to come in if the stream is not initialized,
-         *  otherwise do not wait
+        /*  Retrieve rgb and depth image
+         *  rgb image needs to be converted from FlexImage to ImageOf
          */
-        img_rgb = camera_in_rgb_port.read(true);
-        //yInfo() << "RGB image acquired: " << img_rgb->width() << img_rgb->height();
 
-        img_depth = camera_in_depth_port.read(true);
-        //yInfo() << "Depth image acquired: " << img_depth->width() << img_depth->height();
 
-        depthToPointCloud(*img_depth, *img_rgb, scene_point_cloud_rgb);
+        yarp::os::LockGuard lg(mutex);
+
+
+//        img_rgb_flex.setPixelCode(VOCAB_PIXEL_RGB);
+
+//        bool ok_acquisition{false};
+
+//        ok_acquisition |= iRgbd->getDepthImage(img_depth);
+
+//        yDebug() << __LINE__;
+
+//        ok_acquisition |= iRgbd->getRgbImage(img_rgb_flex);
+
+//        yDebug() << __LINE__;
+
+//        if (img_rgb_flex.width() > 0 && img_rgb_flex.height() > 0)
+//        {
+//            img_rgb.setExternal(img_rgb_flex.getRawImage(), img_rgb_flex.width(), img_rgb_flex.height());
+//        }
+//        else
+//        {
+//            yWarning() << "Retrieved RGB image has invalid dimensions";
+//            return true;
+//        }
+
+//        depthToPointCloud(img_depth, img_rgb, scene_point_cloud_rgb);
+
+        RGBImage_yarp *img_rgb_temp;
+        DepthImage_yarp *img_depth_temp;
+
+        img_rgb_temp    = camera_in_rgb_port.read(true);
+        img_depth_temp  = camera_in_depth_port.read(true);
+
+        depthToPointCloud(*img_depth_temp, *img_rgb_temp, scene_point_cloud_rgb);
 
         pcl::PointCloud <pcl::PointXYZRGBA>::Ptr pcl_cloud(new pcl::PointCloud <pcl::PointXYZRGBA>);
 
@@ -299,6 +342,8 @@ public:
         camera_in_rgb_port.interrupt();
         camera_in_depth_port.interrupt();
 
+        rpc_service.interrupt();
+
         return true;
     }
 
@@ -310,6 +355,8 @@ public:
         camera_in_rgb_port.close();
         camera_in_depth_port.close();
 
+        rpc_service.close();
+
         poly.close();
 
         return true;
@@ -317,7 +364,7 @@ public:
 
     /****************************************************/
 
-    bool depthToPointCloud(DepthImage_yarp &depth_map, PointCloud_yarp &pc)
+    bool depthToPointCloud(const DepthImage_yarp &depth_map, PointCloud_yarp &pc)
     {
         /*
          *  Create a temporary point cloud
@@ -354,7 +401,7 @@ public:
 
     /****************************************************/
 
-    bool depthToPointCloud(DepthImage_yarp &depth_map, RGBImage_yarp &rgb_img, PointCloud_RGBA_yarp &pc)
+    bool depthToPointCloud(const DepthImage_yarp &depth_map, const RGBImage_yarp &rgb_img, PointCloud_RGBA_yarp &pc)
     {
         /*
          *  Create a temporary point cloud
@@ -404,6 +451,29 @@ public:
             yError() << "Reconstructed point cloud is empty";
             return false;
         }
+    }
+
+    /****************************************************/
+
+    bool dumpScene(const std::string &filename) override
+    {
+        /*
+         * Save the last processed point cloud to file
+         * as an ASCII pcd file
+         * (if the point cloud is valid and contains something)
+         */
+
+        yarp::os::LockGuard lg(mutex);
+
+        bool success{false};
+
+        if (scene_point_cloud_rgb.size() > 0)
+        {
+            success = (yarp::pcl::savePCD <yarp::sig::DataXYZRGBA, pcl::PointXYZRGBA> (filename + ".pcd", scene_point_cloud_rgb) == 0);
+        }
+
+        return success;
+
     }
 
 
