@@ -7,13 +7,13 @@
 
     <module>
         <name>yarpdev</name>
-        <parameters>--context tabletopSegmentation --from config.ini</parameters>
+        <parameters>--context tabletopSegmentation --from device_config.ini</parameters>
         <node>localhost</node>
     </module>
 
     <module>
         <name>tabletop_segmentation</name>
-        <parameters>--context tabletopSegmentation --from module_config.ini</parameters>
+        <parameters>--context tabletopSegmentation --from config.ini</parameters>
         <node>localhost</node>
     </module>
 
