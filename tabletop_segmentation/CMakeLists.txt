@@ -16,6 +16,17 @@ find_package(YARP REQUIRED
 
 find_package(OpenCV REQUIRED)
 
+find_package(ICUB REQUIRED)
+find_package(ICUBcontrib REQUIRED)
+
+list(APPEND CMAKE_MODULE_PATH ${ICUB_MODULE_PATH})
+list(APPEND CMAKE_MODULE_PATH ${ICUBCONTRIB_MODULE_PATH})
+
+include(ICUBcontribOptions)
+include(ICUBcontribHelpers)
+
+icubcontrib_set_default_prefix()
+
 include_directories(${PCL_INCLUDE_DIRS}
 )
 
@@ -39,5 +50,14 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
                             ${OpenCV_LIBS}
 )
 
+install(TARGETS ${CMAKE_PROJECT_NAME} DESTINATION bin)
+
+icubcontrib_add_uninstall_target()
+
+file(GLOB scripts ${CMAKE_SOURCE_DIR}/app/scripts/*.xml)
+file(GLOB configs ${CMAKE_SOURCE_DIR}/config/*.ini)
+
+yarp_install(FILES ${scripts} DESTINATION ${ICUBCONTRIB_MODULES_INSTALL_DIR})
+yarp_install(FILES ${configs} DESTINATION ${ICUBCONTRIB_CONTEXTS_INSTALL_DIR}/tabletopSegmentation)
 
 

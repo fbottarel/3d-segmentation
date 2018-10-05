@@ -476,8 +476,6 @@ public:
 
     }
 
-
-
 };
 
 
@@ -496,6 +494,8 @@ int main(int argc, char** argv) {
     yInfo() << "Module startup.";
 
     ResourceFinder rf;
+    rf.setDefaultContext("tabletopSegmentation");
+    rf.setDefaultConfigFile("config.ini");
     rf.configure(argc, argv);
 
     TabletopSegmentationModule app;
