@@ -1,0 +1,32 @@
+<application>
+    <name>Tabletop segmentation</name>
+
+    <dependencies>
+        <port>/</port>
+    </dependencies>
+
+    <module>
+        <name>yarpdev</name>
+        <parameters>--context tabletopSegmentation --from config.ini</parameters>
+        <node>localhost</node>
+    </module>
+
+    <module>
+        <name>tabletop_segmentation</name>
+        <parameters>--context tabletopSegmentation --from module_config.ini</parameters>
+        <node>localhost</node>
+    </module>
+
+    <connection>
+        <from>/depthCamera/depthImage:o</from>
+        <to>/tabletopSegmentation/camera_depth:i</to>
+        <protocol>fast_tcp</protocol>
+    </connection>
+
+    <connection>
+        <from>/depthCamera/rgbImage:o</from>
+        <to>/tabletopSegmentation/camera_rgb:i</to>
+        <protocol>fast_tcp</protocol>
+    </connection>
+
+</application>
