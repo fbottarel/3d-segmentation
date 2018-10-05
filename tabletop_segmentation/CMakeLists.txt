@@ -57,7 +57,7 @@ icubcontrib_add_uninstall_target()
 file(GLOB scripts ${CMAKE_SOURCE_DIR}/app/scripts/*.xml)
 file(GLOB configs ${CMAKE_SOURCE_DIR}/config/*.ini)
 
-yarp_install(FILES ${scripts} DESTINATION ${ICUBCONTRIB_APPLICATIONS_INSTALL_DIR}/applications)
+yarp_install(FILES ${scripts} DESTINATION ${ICUBCONTRIB_APPLICATIONS_INSTALL_DIR})
 yarp_install(FILES ${configs} DESTINATION ${ICUBCONTRIB_CONTEXTS_INSTALL_DIR}/tabletopSegmentation)
 
 
