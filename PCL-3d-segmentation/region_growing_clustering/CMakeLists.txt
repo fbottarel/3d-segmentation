@@ -1,0 +1,2 @@
+add_executable(region_growing_clustering region_growing_clustering.cpp)
+target_link_libraries(region_growing_clustering ${PCL_LIBRARIES})
